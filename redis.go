@@ -14,6 +14,8 @@ import (
 	redisCon "github.com/gomodule/redigo/redis"
 )
 
+var log = clog.NewWithPlugin("redis-plugin")
+
 type Redis struct {
 	Next           plugin.Handler
 	Pool           *redisCon.Pool
@@ -29,7 +31,6 @@ type Redis struct {
 }
 
 func (redis *Redis) LoadZones() {
-	var log = clog.NewWithPlugin("redis-plugin")
 	log.Info("Loading zones from redis")
 	var (
 		reply interface{}
@@ -46,12 +47,12 @@ func (redis *Redis) LoadZones() {
 
 	reply, err = conn.Do("KEYS", redis.keyPrefix+"*"+redis.keySuffix)
 	if err != nil {
-		clog.Error("error getting keys from redis")
+		log.Error("error getting keys from redis")
 		return
 	}
 	zones, err = redisCon.Strings(reply, nil)
 	if err != nil {
-		clog.Error("error getting keys from redis", err)
+		log.Error("error getting keys from redis", err)
 		return
 	}
 	for i := range zones {
