@@ -50,6 +50,10 @@ func (redis *Redis) LoadZones() {
 		return
 	}
 	zones, err = redisCon.Strings(reply, nil)
+	if err != nil {
+		clog.Error("error getting keys from redis", err)
+		return
+	}
 	for i := range zones {
 		zones[i] = strings.TrimPrefix(zones[i], redis.keyPrefix)
 		zones[i] = strings.TrimSuffix(zones[i], redis.keySuffix)
