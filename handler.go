@@ -2,17 +2,20 @@ package redis
 
 import (
 	"fmt"
+	"log/slog"
+
 	// "fmt"
+	"context"
 	"time"
 
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
-	"golang.org/x/net/context"
 )
 
 // ServeDNS implements the plugin.Handler interface.
 func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
+	logger := slog.Default().With(slog.String("plugin", "redis"))
 	state := request.Request{W: w, Req: r}
 
 	qname := state.Name()
@@ -24,7 +27,9 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 
 	zone := plugin.Zones(redis.Zones).Matches(qname)
 	// fmt.Println("zone : ", zone)
+	logger.Info("zone", slog.String("matched-zone", zone))
 	if zone == "" {
+		logger.Info("zone not found")
 		return plugin.NextOrFailure(qname, redis.Next, ctx, w, r)
 	}
 
