@@ -2,7 +2,6 @@ package redis
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
@@ -265,7 +264,7 @@ func (redis *Redis) AXFR(z *Zone) (records []dns.RR) {
 	records = append(records, extras...)
 	records = append(records, soa...)
 
-	fmt.Println(records)
+	log.Error(records)
 	return
 }
 
@@ -350,7 +349,7 @@ func (redis *Redis) get(key string, z *Zone) *Record {
 	)
 	conn := redis.Pool.Get()
 	if conn == nil {
-		fmt.Println("error connecting to redis")
+		log.Error("error connecting to redis")
 		return nil
 	}
 	defer conn.Close()
@@ -373,7 +372,7 @@ func (redis *Redis) get(key string, z *Zone) *Record {
 	r := new(Record)
 	err = json.Unmarshal([]byte(val), r)
 	if err != nil {
-		fmt.Println("parse error : ", val, err)
+		log.Error("parse error : ", val, err)
 		return nil
 	}
 	return r
@@ -437,7 +436,7 @@ func (redis *Redis) save(zone string, subdomain string, value string) error {
 
 	conn := redis.Pool.Get()
 	if conn == nil {
-		fmt.Println("error connecting to redis")
+		log.Error("error connecting to redis")
 		return nil
 	}
 	defer conn.Close()
@@ -455,7 +454,7 @@ func (redis *Redis) load(zone string) *Zone {
 
 	conn := redis.Pool.Get()
 	if conn == nil {
-		fmt.Println("error connecting to redis")
+		log.Error("error connecting to redis")
 		return nil
 	}
 	defer conn.Close()

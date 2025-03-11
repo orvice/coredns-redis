@@ -2,7 +2,6 @@ package redis
 
 import (
 	"testing"
-	"fmt"
 	"math/rand"
 
 	"github.com/coredns/coredns/plugin/pkg/dnstest"
@@ -75,7 +74,7 @@ var testCasesMiss = []test.Case {
 }
 
 func BenchmarkHit(b *testing.B) {
-	fmt.Println("benchmark test")
+	log.Info("benchmark test")
 	r := newRedisPlugin()
 	conn := r.Pool.Get()
 	defer conn.Close()
@@ -83,7 +82,7 @@ func BenchmarkHit(b *testing.B) {
 	for _, cmd := range benchmarkEntries {
 		err := r.save(zone, cmd[0], cmd[1])
 		if err != nil {
-			fmt.Println("error in redis", err)
+			log.Error("error in redis", err)
 		}
 	}
 	b.ResetTimer()
@@ -96,7 +95,7 @@ func BenchmarkHit(b *testing.B) {
 }
 
 func BenchmarkMiss(b *testing.B) {
-	fmt.Println("benchmark test")
+	log.Info("benchmark test")
 	r := newRedisPlugin()
 	conn := r.Pool.Get()
 	defer conn.Close()
@@ -104,7 +103,7 @@ func BenchmarkMiss(b *testing.B) {
 	for _, cmd := range benchmarkEntries {
 		err := r.save(zone, cmd[0], cmd[1])
 		if err != nil {
-			fmt.Println("error in redis", err)
+			log.Error("error in redis", err)
 		}
 	}
 	b.ResetTimer()
