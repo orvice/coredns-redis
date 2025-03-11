@@ -240,7 +240,9 @@ func TestAnswer(t *testing.T) {
 			if resp == nil {
 				resp = new(dns.Msg)
 			}
-			test.SortAndCheck(t, resp, tc)
+			if err := test.SortAndCheck(resp, tc); err != nil {
+				t.Errorf("Test failed: %v", err)
+			}
 		}
 	}
 }
