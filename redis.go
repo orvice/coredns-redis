@@ -462,12 +462,14 @@ func (redis *Redis) load(zone string) *Zone {
 
 	reply, err = conn.Do("HKEYS", redis.keyPrefix+zone+redis.keySuffix)
 	if err != nil {
+		log.Error("error getting keys from redis", err)
 		return nil
 	}
 	z := new(Zone)
 	z.Name = zone
 	vals, err = redisCon.Strings(reply, nil)
 	if err != nil {
+		log.Error("error getting keys from redis", err)
 		return nil
 	}
 	z.Locations = make(map[string]struct{})
