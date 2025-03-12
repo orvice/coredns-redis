@@ -104,6 +104,5 @@ func redisParse(c *caddy.Controller) (*Redis, error) {
 	}
 
 	log.Info("connect to redis ", redis.redisAddress, redis.keyPrefix)
-
-	return &Redis{}, nil
+	return &redis, nil
 }
