@@ -5,8 +5,8 @@ go 1.24.0
 require (
 	github.com/coredns/caddy v1.1.2-0.20241029205200-8de985351a98
 	github.com/coredns/coredns v1.12.0
-	github.com/gomodule/redigo v1.9.2
 	github.com/miekg/dns v1.1.63
+	github.com/redis/go-redis/v9 v9.7.1
 )
 
 require (
@@ -28,7 +28,6 @@ require (
 	github.com/prometheus/common v0.60.1 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/quic-go/quic-go v0.48.1 // indirect
-	github.com/redis/go-redis/v9 v9.7.1 // indirect
 	go.uber.org/mock v0.4.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
