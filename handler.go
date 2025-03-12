@@ -26,7 +26,7 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	// fmt.Println("zone : ", zone)
 	log.Info("zone", zone)
 	if zone == "" {
-		log.Info("zone not found")
+		log.Info("zone not found", " next to handler")
 		return plugin.NextOrFailure(qname, redis.Next, ctx, w, r)
 	}
 
@@ -69,7 +69,8 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 
 	location := redis.findLocation(qname, z)
 	if len(location) == 0 { // empty, no results
-		return redis.errorResponse(state, zone, dns.RcodeNameError, nil)
+		// return redis.errorResponse(state, zone, dns.RcodeNameError, nil)
+		return plugin.NextOrFailure(qname, redis.Next, ctx, w, r)
 	}
 
 	answers := make([]dns.RR, 0, 10)
@@ -79,7 +80,8 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 
 	if record == nil {
 		// Record may be nil when the redis read returns an error
-		return redis.errorResponse(state, zone, dns.RcodeServerFailure, nil)
+		// return redis.errorResponse(state, zone, dns.RcodeServerFailure, nil)
+		return plugin.NextOrFailure(qname, redis.Next, ctx, w, r)
 	}
 
 	switch qtype {
@@ -103,7 +105,8 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 		answers, extras = redis.CAA(qname, z, record)
 
 	default:
-		return redis.errorResponse(state, zone, dns.RcodeNotImplemented, nil)
+		// return redis.errorResponse(state, zone, dns.RcodeNotImplemented, nil)
+		return plugin.NextOrFailure(qname, redis.Next, ctx, w, r)
 	}
 
 	m := new(dns.Msg)
