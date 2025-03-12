@@ -33,25 +33,25 @@ type Redis struct {
 
 func (redis *Redis) LoadZones() {
 	log.Info("Start Loading zones from redis")
-	
+
 	if redis.Client == nil {
 		clog.Error("error connecting to redis")
 		return
 	}
-	
+
 	pattern := redis.keyPrefix + "*" + redis.keySuffix
 	keys, err := redis.Client.Keys(ctx, pattern).Result()
 	if err != nil {
 		log.Error("error getting keys from redis ", " redis addr: ", redis.redisAddress, " error ", err.Error())
 		return
 	}
-	
+
 	zones := make([]string, len(keys))
 	for i, key := range keys {
 		zones[i] = strings.TrimPrefix(key, redis.keyPrefix)
 		zones[i] = strings.TrimSuffix(zones[i], redis.keySuffix)
 	}
-	
+
 	redis.LastZoneUpdate = time.Now()
 	redis.Zones = zones
 }
@@ -355,7 +355,7 @@ func (redis *Redis) get(key string, z *Zone) *Record {
 		}
 		return nil
 	}
-	
+
 	r := new(Record)
 	err = json.Unmarshal([]byte(val), r)
 	if err != nil {
@@ -403,19 +403,19 @@ func (redis *Redis) Connect() {
 	opts := &goredis.Options{
 		Addr: redis.redisAddress,
 	}
-	
+
 	if redis.redisPassword != "" {
 		opts.Password = redis.redisPassword
 	}
-	
+
 	if redis.connectTimeout != 0 {
 		opts.DialTimeout = time.Duration(redis.connectTimeout) * time.Millisecond
 	}
-	
+
 	if redis.readTimeout != 0 {
 		opts.ReadTimeout = time.Duration(redis.readTimeout) * time.Millisecond
 	}
-	
+
 	redis.Client = goredis.NewClient(opts)
 }
 
@@ -431,7 +431,7 @@ func (redis *Redis) save(zone string, subdomain string, value string) error {
 
 func (redis *Redis) load(zone string) *Zone {
 	if redis.Client == nil {
-		log.Error("error connecting to redis")
+		log.Error("error connecting to redis, redis is nil")
 		return nil
 	}
 
@@ -440,7 +440,7 @@ func (redis *Redis) load(zone string) *Zone {
 		log.Error("error getting keys from redis", err.Error())
 		return nil
 	}
-	
+
 	z := new(Zone)
 	z.Name = zone
 	z.Locations = make(map[string]struct{})
