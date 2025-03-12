@@ -46,12 +46,12 @@ func (redis *Redis) LoadZones() {
 
 	reply, err = conn.Do("KEYS", redis.keyPrefix+"*"+redis.keySuffix)
 	if err != nil {
-		log.Error("error getting keys from redis")
+		log.Error("error getting keys from redis ", err.Error())
 		return
 	}
 	zones, err = redisCon.Strings(reply, nil)
 	if err != nil {
-		log.Error("error getting keys from redis", err)
+		log.Error("error getting keys from redis", err.Error())
 		return
 	}
 	for i := range zones {
@@ -461,14 +461,14 @@ func (redis *Redis) load(zone string) *Zone {
 
 	reply, err = conn.Do("HKEYS", redis.keyPrefix+zone+redis.keySuffix)
 	if err != nil {
-		log.Error("error getting keys from redis", err)
+		log.Error("error getting keys from redis", err.Error())
 		return nil
 	}
 	z := new(Zone)
 	z.Name = zone
 	vals, err = redisCon.Strings(reply, nil)
 	if err != nil {
-		log.Error("error getting keys from redis", err)
+		log.Error("error getting keys from redis", err.Error())
 		return nil
 	}
 	z.Locations = make(map[string]struct{})
