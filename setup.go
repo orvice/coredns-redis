@@ -9,10 +9,6 @@ import (
 )
 
 func init() {
-	caddy.RegisterPlugin("redis", caddy.Plugin{
-		ServerType: "dns",
-		Action:     setup,
-	})
 	plugin.Register("redis", setup)
 }
 
