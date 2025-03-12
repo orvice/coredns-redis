@@ -39,7 +39,7 @@ func (redis *Redis) LoadZones() {
 
 	conn := redis.Pool.Get()
 	if conn == nil {
-		clog.Error("error connecting to redis")
+		clog.Error("error connecting to redis", err.Error())
 		return
 	}
 	defer conn.Close()
