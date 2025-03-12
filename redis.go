@@ -400,6 +400,7 @@ func splitQuery(query string) (string, string, bool) {
 }
 
 func (redis *Redis) Connect() {
+	log.Info("connect to redis ", redis.redisAddress)
 	opts := &goredis.Options{
 		Addr: redis.redisAddress,
 	}
@@ -417,6 +418,11 @@ func (redis *Redis) Connect() {
 	}
 
 	redis.Client = goredis.NewClient(opts)
+
+	if err := redis.Client.Ping(ctx).Err(); err != nil {
+		log.Error("error on ping to redis", err.Error())
+		return
+	}
 }
 
 func (redis *Redis) save(zone string, subdomain string, value string) error {
