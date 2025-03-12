@@ -30,7 +30,7 @@ type Redis struct {
 }
 
 func (redis *Redis) LoadZones() {
-	log.Info("Loading zones from redis")
+	log.Info("Start Loading zones from redis")
 	var (
 		reply interface{}
 		err   error
@@ -39,14 +39,14 @@ func (redis *Redis) LoadZones() {
 
 	conn := redis.Pool.Get()
 	if conn == nil {
-		clog.Error("error connecting to redis", err.Error())
+		clog.Error("error connecting to redis")
 		return
 	}
 	defer conn.Close()
 
 	reply, err = conn.Do("KEYS", redis.keyPrefix+"*"+redis.keySuffix)
 	if err != nil {
-		log.Error("error getting keys from redis ", err.Error())
+		log.Error("error getting keys from redis ", " redis addr: ", redis.redisAddress, " error ", err.Error())
 		return
 	}
 	zones, err = redisCon.Strings(reply, nil)
