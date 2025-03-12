@@ -2,8 +2,8 @@ package redis
 
 import (
 	"context"
+	"strings"
 	"testing"
-	"fmt"
 
 	"github.com/coredns/coredns/plugin/pkg/dnstest"
 	"github.com/coredns/coredns/plugin/test"
@@ -11,21 +11,26 @@ import (
 	"github.com/miekg/dns"
 )
 
-var zones = []string {
+var zones = []string{
 	"example.com.", "example.net.",
 }
 
-var lookupEntries = [][][]string {
+func TestMain(m *testing.M) {
+	passthrough = false
+	m.Run()
+}
+
+var lookupEntries = [][][]string{
 	{
 		{"@",
 			"{\"soa\":{\"ttl\":300, \"minttl\":100, \"mbox\":\"hostmaster.example.com.\",\"ns\":\"ns1.example.com.\",\"refresh\":44,\"retry\":55,\"expire\":66}}",
 		},
 		{"x",
 			"{\"a\":[{\"ttl\":300, \"ip\":\"1.2.3.4\"},{\"ttl\":300, \"ip\":\"5.6.7.8\"}]," +
-			"\"aaaa\":[{\"ttl\":300, \"ip\":\"::1\"}]," +
-			"\"txt\":[{\"ttl\":300, \"text\":\"foo\"},{\"ttl\":300, \"text\":\"bar\"}]," +
-			"\"ns\":[{\"ttl\":300, \"host\":\"ns1.example.com.\"},{\"ttl\":300, \"host\":\"ns2.example.com.\"}]," +
-			"\"mx\":[{\"ttl\":300, \"host\":\"mx1.example.com.\", \"preference\":10},{\"ttl\":300, \"host\":\"mx2.example.com.\", \"preference\":10}]}",
+				"\"aaaa\":[{\"ttl\":300, \"ip\":\"::1\"}]," +
+				"\"txt\":[{\"ttl\":300, \"text\":\"foo\"},{\"ttl\":300, \"text\":\"bar\"}]," +
+				"\"ns\":[{\"ttl\":300, \"host\":\"ns1.example.com.\"},{\"ttl\":300, \"host\":\"ns2.example.com.\"}]," +
+				"\"mx\":[{\"ttl\":300, \"host\":\"mx1.example.com.\", \"preference\":10},{\"ttl\":300, \"host\":\"mx2.example.com.\", \"preference\":10}]}",
 		},
 		{"y",
 			"{\"cname\":[{\"ttl\":300, \"host\":\"x.example.com.\"}]}",
@@ -41,13 +46,13 @@ var lookupEntries = [][][]string {
 		},
 		{"sip",
 			"{\"a\":[{\"ttl\":300, \"ip\":\"7.7.7.7\"}]," +
-			"\"aaaa\":[{\"ttl\":300, \"ip\":\"::1\"}]}",
+				"\"aaaa\":[{\"ttl\":300, \"ip\":\"::1\"}]}",
 		},
 	},
 	{
 		{"@",
 			"{\"soa\":{\"ttl\":300, \"minttl\":100, \"mbox\":\"hostmaster.example.net.\",\"ns\":\"ns1.example.net.\",\"refresh\":44,\"retry\":55,\"expire\":66}," +
-			"\"ns\":[{\"ttl\":300, \"host\":\"ns1.example.net.\"},{\"ttl\":300, \"host\":\"ns2.example.net.\"}]}",
+				"\"ns\":[{\"ttl\":300, \"host\":\"ns1.example.net.\"},{\"ttl\":300, \"host\":\"ns2.example.net.\"}]}",
 		},
 		{"sub.*",
 			"{\"txt\":[{\"ttl\":300, \"text\":\"this is not a wildcard\"}]}",
@@ -60,7 +65,7 @@ var lookupEntries = [][][]string {
 		},
 		{"*",
 			"{\"txt\":[{\"ttl\":300, \"text\":\"this is a wildcard\"}]," +
-			"\"mx\":[{\"ttl\":300, \"host\":\"host1.example.net.\",\"preference\": 10}]}",
+				"\"mx\":[{\"ttl\":300, \"host\":\"host1.example.net.\",\"preference\": 10}]}",
 		},
 		{"_ssh._tcp.host1",
 			"{\"srv\":[{\"ttl\":300, \"target\":\"tcp.example.com.\",\"port\":123,\"priority\":10,\"weight\":100}]}",
@@ -195,46 +200,74 @@ func newRedisPlugin() *Redis {
 	ctxt = context.TODO()
 
 	redis := new(Redis)
-	redis.keyPrefix = ""
+	redis.keyPrefix = "coredns:"
 	redis.keySuffix = ""
 	redis.Ttl = 300
-	redis.redisAddress = "localhost:6379"
+	redis.redisAddress = "10.129.51.131:6379"
 	redis.redisPassword = ""
 	redis.Connect()
 	redis.LoadZones()
 	return redis
 	/*
-	return &Redis {
-		keyPrefix: "",
-		keySuffix:"",
-		redisc: client,
-		Ttl: 300,
-	}	redis := new(Redis)
+		return &Redis {
+			keyPrefix: "",
+			keySuffix:"",
+			redisc: client,
+			Ttl: 300,
+		}	redis := new(Redis)
 	*/
 }
 
 func TestAnswer(t *testing.T) {
-	fmt.Println("lookup test")
+	log.Info("lookup test")
 	r := newRedisPlugin()
-	conn := r.Pool.Get()
-	defer conn.Close()
+
+	// Test Redis connection
+	pong, err := r.Client.Ping(ctx).Result()
+	if err != nil {
+		t.Fatalf("Failed to connect to Redis: %v", err)
+	}
+	log.Debugf("Redis PING response: %v", pong)
 
 	for i, zone := range zones {
-		conn.Do("EVAL", "return redis.call('del', unpack(redis.call('keys', ARGV[1])))", 0, r.keyPrefix + zone + r.keySuffix)
+		// Clear existing data for this zone
+		pattern := r.keyPrefix + zone + r.keySuffix
+		keys, delErr := r.Client.Keys(ctx, pattern).Result()
+		if delErr == nil && len(keys) > 0 {
+			delReply, err := r.Client.Del(ctx, keys...).Result()
+			log.Debugf("Deleted existing keys for zone %s: %v, err: %v", zone, delReply, err)
+		}
+
+		// Save test data
 		for _, cmd := range lookupEntries[i] {
 			err := r.save(zone, cmd[0], cmd[1])
+			log.Debugf("Saving %s.%s: %v", cmd[0], zone, err)
 			if err != nil {
-				fmt.Println("error in redis", err)
+				log.Error("error in redis", err)
 				t.Fail()
 			}
 		}
+
+		// Verify data was saved correctly
+		keys, keysErr := r.Client.HKeys(ctx, r.keyPrefix+zone+r.keySuffix).Result()
+		log.Debugf("Keys in Redis for zone %s: %v, err: %v", zone, keys, keysErr)
 		for _, tc := range testCases[i] {
 			m := tc.Msg()
+			log.Debugf("Testing query: %s %s", m.Question[0].Name, dns.TypeToString[m.Question[0].Qtype])
+
+			// Check if the record exists in Redis
+			query := strings.TrimSuffix(m.Question[0].Name, "."+zone)
+			if query == m.Question[0].Name {
+				query = "@"
+			}
+			recordData, _ := r.Client.HGet(ctx, r.keyPrefix+zone+r.keySuffix, query).Result()
+			log.Debugf("Redis data for %s.%s: %s", query, zone, recordData)
 
 			rec := dnstest.NewRecorder(&test.ResponseWriter{})
 			r.ServeDNS(ctxt, rec, m)
 
 			resp := rec.Msg
+			log.Debugf("DNS response: %+v", resp)
 
 			// TODO(arash): this shouldn't happen, check plugin's empty response
 			if resp == nil {

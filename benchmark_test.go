@@ -76,9 +76,11 @@ var testCasesMiss = []test.Case {
 func BenchmarkHit(b *testing.B) {
 	log.Info("benchmark test")
 	r := newRedisPlugin()
-	conn := r.Pool.Get()
-	defer conn.Close()
-	conn.Do("EVAL", "return redis.call('del', unpack(redis.call('keys', ARGV[1])))", 0, r.keyPrefix + "*" + r.keySuffix)
+	// Delete all keys matching the pattern
+	keys, err := r.Client.Keys(ctx, r.keyPrefix + "*" + r.keySuffix).Result()
+	if err == nil && len(keys) > 0 {
+		r.Client.Del(ctx, keys...)
+	}
 	for _, cmd := range benchmarkEntries {
 		err := r.save(zone, cmd[0], cmd[1])
 		if err != nil {
@@ -97,9 +99,11 @@ func BenchmarkHit(b *testing.B) {
 func BenchmarkMiss(b *testing.B) {
 	log.Info("benchmark test")
 	r := newRedisPlugin()
-	conn := r.Pool.Get()
-	defer conn.Close()
-	conn.Do("EVAL", "return redis.call('del', unpack(redis.call('keys', ARGV[1])))", 0, r.keyPrefix + "*" + r.keySuffix)
+	// Delete all keys matching the pattern
+	keys, err := r.Client.Keys(ctx, r.keyPrefix + "*" + r.keySuffix).Result()
+	if err == nil && len(keys) > 0 {
+		r.Client.Del(ctx, keys...)
+	}
 	for _, cmd := range benchmarkEntries {
 		err := r.save(zone, cmd[0], cmd[1])
 		if err != nil {

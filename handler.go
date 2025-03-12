@@ -11,6 +11,10 @@ import (
 	"github.com/miekg/dns"
 )
 
+var (
+	passthrough = true
+)
+
 // ServeDNS implements the plugin.Handler interface.
 func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 	state := request.Request{W: w, Req: r}
@@ -32,6 +36,9 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 
 	z := redis.load(zone)
 	if z == nil {
+		if passthrough {
+			return plugin.NextOrFailure(qname, redis.Next, ctx, w, r)
+		}
 		return redis.errorResponse(state, zone, dns.RcodeServerFailure, nil)
 	}
 
@@ -69,8 +76,10 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 
 	location := redis.findLocation(qname, z)
 	if len(location) == 0 { // empty, no results
-		// return redis.errorResponse(state, zone, dns.RcodeNameError, nil)
-		return plugin.NextOrFailure(qname, redis.Next, ctx, w, r)
+		if passthrough {
+			return plugin.NextOrFailure(qname, redis.Next, ctx, w, r)
+		}
+		return redis.errorResponse(state, zone, dns.RcodeNameError, nil)
 	}
 
 	answers := make([]dns.RR, 0, 10)
@@ -79,9 +88,12 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	record := redis.get(location, z)
 
 	if record == nil {
+		if passthrough {
+			return plugin.NextOrFailure(qname, redis.Next, ctx, w, r)
+		}
 		// Record may be nil when the redis read returns an error
-		// return redis.errorResponse(state, zone, dns.RcodeServerFailure, nil)
-		return plugin.NextOrFailure(qname, redis.Next, ctx, w, r)
+		return redis.errorResponse(state, zone, dns.RcodeNameError, nil)
+		// return plugin.NextOrFailure(qname, redis.Next, ctx, w, r)
 	}
 
 	switch qtype {
@@ -105,8 +117,10 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 		answers, extras = redis.CAA(qname, z, record)
 
 	default:
-		// return redis.errorResponse(state, zone, dns.RcodeNotImplemented, nil)
-		return plugin.NextOrFailure(qname, redis.Next, ctx, w, r)
+		if passthrough {
+			return plugin.NextOrFailure(qname, redis.Next, ctx, w, r)
+		}
+		return redis.errorResponse(state, zone, dns.RcodeNotImplemented, nil)
 	}
 
 	m := new(dns.Msg)
